@@ -1,0 +1,46 @@
+services:
+  honeypot:
+    build:
+      context: .
+      dockerfile: honeypot/Dockerfile
+    image: ssh-honeypot:latest
+    ports:
+      - "2222:2222"
+    environment:
+      HONEYPOT_FAKE_SHELL: "1"   # accept any password, log commands (nothing is executed)
+      HONEYPOT_DB: /app/data/honeypot.db
+      HONEYPOT_HOST_KEY: /app/data/host_key
+    volumes:
+      - honeypot-data:/app/data
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  enricher:
+    image: ssh-honeypot:latest
+    depends_on: [honeypot]
+    command: ["sh", "-c", "while true; do python -m honeypot.enrich; sleep 600; done"]
+    environment:
+      HONEYPOT_DB: /app/data/honeypot.db
+    volumes:
+      - honeypot-data:/app/data
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports:
+      - "127.0.0.1:8501:8501"    # local only, never expose this publicly
+    environment:
+      HONEYPOT_DB: /app/data/honeypot.db
+    volumes:
+      - honeypot-data:/app/data:ro
+    restart: unless-stopped
+
+volumes:
+  honeypot-data:

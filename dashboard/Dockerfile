@@ -1,0 +1,9 @@
+FROM python:3.12-slim
+RUN useradd -m -u 10001 dash
+WORKDIR /app
+COPY dashboard/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY dashboard/ dashboard/
+USER dash
+EXPOSE 8501
+CMD ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
